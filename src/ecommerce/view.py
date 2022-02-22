@@ -1,13 +1,16 @@
+from django.contrib.auth import authenticate, login, get_user_model
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
-from .forms import ContactForm
+from .forms import ContactForm, LoginForm, RegisterForm
 
 def home_page(request):
     context = {
         "title": "Hola Mundo",
-        "content": "Bienvenido a la pagina de inicio"
+        "content": "Bienvenido a la pagina de inicio",
     }
+    if request.user.is_authenticated():
+        context["premium_content"] = "YEAAHHHHH"
     return render(request, "home_page.html", context)
 
 def about_page(request):
@@ -35,33 +38,40 @@ def contact_page(request):
     return render(request, "contact/view.html", context)
 
 def login_page(request):
-    return render(request, "auth/login.html")
+    form = LoginForm(request.POST or None)
+    context = {
+        "form": form
+    }
+    print("User logged in")    
+    print(request.user.is_authenticated())
+    if form.is_valid():
+        print(form.cleaned_data)
+        username = form.cleaned_data.get("username")
+        password = form.cleaned_data.get("password")
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            print(request.user.is_authenticated())
+            # Redirect to a success page.
+            # context['form'] = LoginForm()
+            return redirect("/")
+        else:
+            # Return an 'invalid login' error message.
+            print("Error")
+        
+    return render(request, "auth/login.html", context)
 
+User = get_user_model()
 def register_page(request):
-    return render(request, "auth/register.html") 
-
-def home_page_old(request):
-    html_ = """
-    <!doctype html>
-    <html lang="en">
-    <head>
-        <!-- Required meta tags -->
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-        <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
-
-        <title>Hello, world!</title>
-    </head>
-    <body>
-        <div class="text-center">
-            <h1>Hola Mundo</h1>
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-fQybjgWLrvvRgtW6bFlB7jaZrFsaBXjsOMm/tB9LTS58ONXgqbR9W8oWht/amnpF" crossorigin="anonymous"></script>
-
-    </body>
-    </html>
-    """
-    return HttpResponse(html_)
+    form = RegisterForm(request.POST or None)
+    context = {
+        "form": form
+    }
+    if form.is_valid():
+        print(form.cleaned_data)
+        username = form.cleaned_data.get("username")
+        email = form.cleaned_data.get("email")
+        password = form.cleaned_data.get("password")
+        new_user = User.objects.create_user(username, email, password)
+        print(new_user)
+    return render(request, "auth/login.html", context)
